@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { @apply bg-bg text-ink font-sans antialiased; font-size: 13px; }
+.num { @apply font-num tabular-nums; }
+input, select, textarea { @apply outline-none; }
+.field { @apply h-9 w-full rounded-md border border-line bg-white px-2.5 text-[13px] text-ink placeholder:text-ink-mute focus:border-primary focus:ring-2 focus:ring-primary/15; }
+select.field { @apply pr-7; }
+textarea.field { @apply h-auto py-2; }
+.label { @apply mb-1 block text-xs font-medium text-ink-sub; }
