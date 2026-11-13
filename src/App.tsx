@@ -1,12 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './lib/store'
-import Layout, { MENUS } from './components/Layout'
+import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import Orders from './pages/Orders'
 import Inventory from './pages/Inventory'
-import Planned from './pages/Planned'
+import Artists from './pages/Artists'
+import Planning from './pages/Planning'
+import Sales from './pages/Sales'
+import Customers from './pages/Customers'
+import Settings from './pages/Settings'
 import Analytics from './pages/Analytics'
 
 export default function App() {
@@ -21,9 +25,11 @@ export default function App() {
         <Route path="/orders" element={<Orders />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/analytics" element={<Analytics />} />
-        {MENUS.filter((m) => !m.ready).map((m) => (
-          <Route key={m.path} path={m.path} element={<Planned menu={m.label} />} />
-        ))}
+        <Route path="/artists" element={<Artists />} />
+        <Route path="/planning" element={<Planning />} />
+        <Route path="/sales" element={<Sales />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

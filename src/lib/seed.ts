@@ -1,9 +1,10 @@
 // 시연용 자료 생성기. 실존 고객 정보가 아닌 테스트 데이터만 만든다.
 import type {
-  Category, Currency, Customer, Data, InventoryLog, Order, OrderItem, OrderStatus,
-  PaymentStatus, Product, ProductStatus, SaleType, Sku,
+  Category, Currency, Customer, Data, Inquiry, InventoryLog, IpProject, Notice, Order, OrderItem, OrderStatus,
+  PaymentStatus, Plan, Product, ProductStatus, SaleRound, SaleType, Sku,
 } from './types'
 import { dayKey } from './format'
+import { DEFAULT_SETTINGS } from './settings'
 
 function rng(seed: number) {
   let a = seed
@@ -219,5 +220,170 @@ export function generateSeed(now = Date.now()): Data {
   log({ skuId: 'p04-s3', type: 'ADJUST', delta: -6, allocDelta: 0, onHandAfter: skuMap.get('p04-s3')!.onHand, reason: '검수 불량 폐기', actor: 'admin', createdAt: now - 3 * DAY })
   log({ skuId: 'p18-s1', type: 'ADJUST', delta: -2, allocDelta: 0, onHandAfter: skuMap.get('p18-s1')!.onHand, reason: '실사 차이 조정', actor: 'admin', createdAt: now - 1 * DAY })
 
-  return { artists, products, skus, orders, customers, inventoryLogs }
+  // ── 이하 추가 메뉴용 자료. 위 자료의 난수 순서를 건드리지 않도록 별도 난수를 쓴다.
+  const r2 = rng(7701)
+  const int2 = (min: number, max: number) => Math.floor(r2() * (max - min + 1)) + min
+  const pick2 = <T,>(arr: T[]) => arr[Math.floor(r2() * arr.length)]
+  const d = (offsetDays: number) => dayKey(now + offsetDays * DAY)
+
+  // IP 프로젝트와 상품 연결
+  const ipDefs: [string, 'ateez' | 'xikers', IpProject['type'], IpProject['status'], number, number | null, string][] = [
+    ['ip-a-tour', 'ateez', 'TOUR', 'ACTIVE', -60, 45, 'ATEEZ WORLD TOUR (DEMO)'],
+    ['ip-a-album', 'ateez', 'ALBUM', 'ACTIVE', -20, 40, 'ATEEZ MINI ALBUM 활동 (DEMO)'],
+    ['ip-a-sg27', 'ateez', 'SEASON', 'ACTIVE', -15, 50, "ATEEZ 2027 SEASON'S GREETINGS"],
+    ['ip-a-fm', 'ateez', 'FANMEETING', 'PLANNED', 30, 60, 'ATEEZ FANMEETING (DEMO)'],
+    ['ip-a-sg26', 'ateez', 'SEASON', 'CLOSED', -400, -300, "ATEEZ 2026 SEASON'S GREETINGS"],
+    ['ip-a-mem', 'ateez', 'MEMBERSHIP', 'ACTIVE', -200, null, 'ATEEZ OFFICIAL MEMBERSHIP'],
+    ['ip-x-album', 'xikers', 'ALBUM', 'ACTIVE', -10, 45, 'xikers MINI ALBUM 활동 (DEMO)'],
+    ['ip-x-tour', 'xikers', 'TOUR', 'ACTIVE', -40, 30, 'xikers TOUR (DEMO)'],
+    ['ip-x-sg27', 'xikers', 'SEASON', 'PLANNED', -5, 50, "xikers 2027 SEASON'S GREETINGS"],
+  ]
+  const ipProjects: IpProject[] = ipDefs.map(([id, artistId, type, status, from, to, name]) => {
+    const ip: IpProject = { id, artistId, name, type, status, startDate: d(from), memo: '', createdAt: now - 90 * DAY, updatedAt: now - int2(1, 20) * DAY }
+    if (to !== null) ip.endDate = d(to)
+    return ip
+  })
+  // 경우의 수: 일부 상품(라이트스틱·키링 등 상시 MD)은 IP에 연결하지 않은 상태로 둔다
+  const linkRule: [RegExp, string][] = [
+    [/ATEEZ WORLD TOUR/, 'ip-a-tour'], [/ATEEZ MINI ALBUM/, 'ip-a-album'], [/ATEEZ 2027/, 'ip-a-sg27'],
+    [/ATEEZ FANMEETING/, 'ip-a-fm'], [/ATEEZ 2026/, 'ip-a-sg26'], [/ATEEZ OFFICIAL MEMBERSHIP/, 'ip-a-mem'],
+    [/ATEEZ PHOTOBOOK/, 'ip-a-tour'], [/xikers MINI ALBUM/, 'ip-x-album'], [/xikers TOUR/, 'ip-x-tour'],
+    [/xikers PHOTOBOOK/, 'ip-x-tour'], [/xikers 2027/, 'ip-x-sg27'],
+  ]
+  for (const p of products) {
+    const hit = linkRule.find(([re]) => re.test(p.name))
+    if (hit) p.ipId = hit[1]
+  }
+
+  // 상품 기획안: 작성 중 · 승인 대기 · 승인(전환 전/후) · 반려
+  const planDefs: [string, 'ateez' | 'xikers', string | undefined, Category, SaleType, number, number, number, Plan['status'], string][] = [
+    ['ATEEZ FANMEETING 응원 슬로건', 'ateez', 'ip-a-fm', 'MD', 'PREORDER', 18000, 3000, 35, 'REVIEW', '팬미팅 현장 수령과 온라인 예약 판매를 병행'],
+    ['ATEEZ FANMEETING 포토카드 세트', 'ateez', 'ip-a-fm', 'MD', 'LIMITED', 12000, 5000, 35, 'DRAFT', '멤버별 8종, 1인당 구매 제한 검토 필요'],
+    ['ATEEZ WORLD TOUR 앙코르 후드 집업', 'ateez', 'ip-a-tour', 'TOUR MD', 'NORMAL', 89000, 2000, 25, 'APPROVED', '앙코르 공연 일정에 맞춰 2차 생산'],
+    ['xikers 2027 SEASON\'S GREETINGS 달력 단품', 'xikers', 'ip-x-sg27', "SEASON'S GREETINGS", 'PREORDER', 15000, 1500, 40, 'REJECTED', '시즌 그리팅 구성품과 중복'],
+    ['xikers TOUR 볼캡', 'xikers', 'ip-x-tour', 'TOUR MD', 'NORMAL', 32000, 1200, 20, 'REVIEW', '투어 로고 자수, 2색'],
+    ['xikers 미니 키링', 'xikers', undefined, 'MD', 'NORMAL', 9000, 4000, 50, 'DRAFT', ''],
+  ]
+  const plans: Plan[] = planDefs.map(([title, artistId, ipId, category, saleType, price, qty, launch, status, memo], i) => {
+    const createdAt = now - (20 - i * 2) * DAY
+    const plan: Plan = {
+      id: 'pl' + String(i + 1).padStart(2, '0'), title, artistId, category, saleType, targetPriceKrw: price, targetQty: qty,
+      launchDate: d(launch), status, memo, createdBy: 'admin', createdAt, updatedAt: createdAt + DAY,
+    }
+    if (ipId) plan.ipId = ipId
+    if (status !== 'DRAFT') plan.requestedAt = createdAt + DAY
+    if (status === 'APPROVED' || status === 'REJECTED') { plan.decidedAt = createdAt + 2 * DAY; plan.decidedBy = 'admin' }
+    if (status === 'REJECTED') plan.rejectReason = '기존 시즌 그리팅 구성품과 겹쳐 수요가 분산될 우려. 구성 차별화 후 재요청.'
+    return plan
+  })
+  // 경우의 수: 기획안에서 출발해 이미 상품으로 전환된 건 (FANMEETING MD PACKAGE)
+  const fm = products.find((p) => p.name.includes('FANMEETING'))
+  if (fm) {
+    const createdAt = now - 30 * DAY
+    plans.push({
+      id: 'pl07', title: fm.name, artistId: fm.artistId, ipId: 'ip-a-fm', category: fm.category, saleType: fm.saleType,
+      targetPriceKrw: 58000, targetQty: 2500, launchDate: d(35), status: 'APPROVED', memo: '팬미팅 공식 패키지',
+      requestedAt: createdAt + DAY, decidedAt: createdAt + 2 * DAY, decidedBy: 'admin', productId: fm.id,
+      createdBy: 'admin', createdAt, updatedAt: createdAt + 2 * DAY,
+    })
+    fm.planId = 'pl07'
+  }
+
+  // 판매 회차: 판매 중 상품은 현재 회차가 열려 있고, 2차·재판매 상품은 이전 회차가 종료된 상태
+  const saleRounds: SaleRound[] = []
+  let rn = 0
+  const addRound = (r: Omit<SaleRound, 'id' | 'createdAt' | 'memo'> & { memo?: string }) =>
+    saleRounds.push({ id: 'r' + String(++rn).padStart(3, '0'), createdAt: now - 50 * DAY, memo: '', ...r })
+  const ALL: Currency[] = ['KRW', 'USD', 'JPY']
+  for (const p of products) {
+    const prev = p.round === '2차' ? ['1차'] : p.round === '재판매' ? ['1차', '2차'] : []
+    prev.forEach((round, i) => {
+      const from = -160 + i * 50
+      addRound({ productId: p.id, round, startDate: d(from), endDate: d(from + 30), countries: ALL, status: 'CLOSED', openedAt: now + from * DAY, closedAt: now + (from + 30) * DAY })
+    })
+    if (p.status === 'ON_SALE')
+      addRound({ productId: p.id, round: p.round, startDate: d(-45), endDate: d(int2(10, 40)), countries: ALL, status: 'OPEN', openedAt: now - 45 * DAY })
+    else if (p.status === 'PAUSED')
+      addRound({ productId: p.id, round: p.round, startDate: d(-45), endDate: d(-3), countries: ALL, status: 'CLOSED', openedAt: now - 45 * DAY, closedAt: now - 3 * DAY, memo: '재고 점검으로 조기 종료' })
+    else if (p.status === 'DRAFT')
+      // 경우의 수: 가격 미입력 국가가 있어 시작이 막히는 예정 회차 / 한국만 먼저 여는 예정 회차
+      addRound({ productId: p.id, round: '1차', startDate: d(7), endDate: d(37), countries: p.name.includes('FANMEETING') ? ALL : ['KRW'], status: 'SCHEDULED' })
+  }
+  const hoodie = products.find((p) => p.name.includes('HOODIE'))
+  if (hoodie) addRound({ productId: hoodie.id, round: '2차', startDate: d(20), endDate: d(50), countries: ALL, status: 'SCHEDULED', memo: '1차 종료 후 시작' })
+
+  // 문의 · 교환 접수
+  const inquiries: Inquiry[] = []
+  const delivered = orders.filter((o) => o.deliveredAt && o.paymentStatus === 'PAID').sort((a, b) => b.deliveredAt! - a.deliveredAt!)
+  const recentDelivered = delivered.filter((o) => now - o.deliveredAt! < 6 * DAY)
+  const oldDelivered = delivered.filter((o) => now - o.deliveredAt! > 12 * DAY)
+  const shipping = orders.filter((o) => o.orderStatus === 'SHIPPED')
+  let qn = 0
+  const addQ = (q: Omit<Inquiry, 'id' | 'customerId' | 'customerName' | 'orderId' | 'orderNo'>, o?: Order) => {
+    const c = o ? undefined : pick2(customers)
+    const item: Inquiry = { id: 'q' + String(++qn).padStart(3, '0'), customerId: o?.customerId ?? c!.id, customerName: o?.customerName ?? c!.name, ...q }
+    if (o) { item.orderId = o.id; item.orderNo = o.orderNo }
+    inquiries.push(item)
+  }
+  const QUESTIONS: [string, string][] = [
+    ['배송은 언제 시작되나요?', '주문한 지 3일이 지났는데 아직 상품 준비 중으로 나옵니다.'],
+    ['예약 상품과 일반 상품을 같이 주문하면 따로 오나요?', '시즌 그리팅과 티셔츠를 함께 주문했습니다.'],
+    ['해외 배송 관세는 누가 부담하나요?', 'Is customs duty included in the shipping fee?'],
+    ['주소를 변경하고 싶습니다', '출고 전이라면 배송지를 바꿀 수 있을까요?'],
+    ['멤버십 키트 구성품 문의', '키트에 포함된 구성품 목록을 알고 싶습니다.'],
+    ['재입고 일정 문의', '품절된 티셔츠 XL 사이즈 재입고 계획이 있나요?'],
+  ]
+  QUESTIONS.forEach(([title, body], i) => {
+    const o = i < 2 ? shipping[i] : undefined
+    // 경우의 수: 접수 후 48시간이 지난 미답변 문의 2건, 방금 들어온 문의, 답변 완료
+    const ageH = [60, 75, 5, 20, 90, 130][i]
+    const answered = i >= 4
+    addQ({
+      type: 'QUESTION', title, body, status: answered ? 'ANSWERED' : 'OPEN', createdAt: now - ageH * HOUR,
+      ...(answered ? { answer: '안녕하세요. 문의 주신 내용 안내드립니다. (시연용 답변)', answeredBy: 'admin', answeredAt: now - (ageH - 10) * HOUR } : {}),
+    }, o)
+  })
+  // 교환: 기한 안(승인 가능) 3건, 기한 경과(승인 불가) 1건, 처리 완료 2건
+  const EX: [Inquiry['exchangeReason'], string, string][] = [
+    ['DEFECT', '인쇄 불량 교환 요청', '후드 앞면 로고 인쇄가 번져 있습니다. 사진 첨부합니다.'],
+    ['WRONG', '다른 사이즈가 왔습니다', 'L을 주문했는데 M이 배송되었습니다.'],
+    ['MISSING', '포토카드가 빠져 있습니다', '앨범 구성품 중 포토카드가 누락되었습니다.'],
+  ]
+  EX.forEach(([exchangeReason, title, body], i) => {
+    const o = recentDelivered[i]
+    if (o) addQ({ type: 'EXCHANGE', exchangeReason, title, body, status: 'OPEN', createdAt: Math.min(now - (i + 1) * 6 * HOUR, o.deliveredAt! + DAY) }, o)
+  })
+  if (oldDelivered[0])
+    addQ({ type: 'EXCHANGE', exchangeReason: 'DEFECT', title: '뒤늦게 발견한 불량', body: '보관만 하다가 이제 열어 보니 케이스가 깨져 있습니다.', status: 'OPEN', createdAt: now - 8 * HOUR }, oldDelivered[0])
+  if (oldDelivered[1])
+    addQ({ type: 'EXCHANGE', exchangeReason: 'WRONG', title: '옵션 오배송', body: 'A ver.을 주문했는데 B ver.이 왔습니다.', status: 'APPROVED', createdAt: oldDelivered[1].deliveredAt! + 2 * DAY, answer: '확인되었습니다. 회수 접수 후 올바른 옵션으로 재발송합니다.', answeredBy: 'admin', answeredAt: oldDelivered[1].deliveredAt! + 3 * DAY }, oldDelivered[1])
+  if (oldDelivered[2])
+    addQ({ type: 'EXCHANGE', exchangeReason: 'DEFECT', title: '교환 요청', body: '생각했던 색상과 달라 교환하고 싶습니다.', status: 'REJECTED', createdAt: oldDelivered[2].deliveredAt! + 3 * DAY, answer: '색상 차이는 불량·오배송·누락에 해당하지 않아 교환이 어렵습니다.', answeredBy: 'admin', answeredAt: oldDelivered[2].deliveredAt! + 4 * DAY }, oldDelivered[2])
+  inquiries.sort((a, b) => b.createdAt - a.createdAt)
+
+  // 공지 · FAQ (경우의 수: 일본어 미작성 → 일본 고객에게 영어로 노출 / 미게시 초안)
+  const notices: Notice[] = [
+    { id: 'n01', kind: 'NOTICE', published: true, createdAt: now - 12 * DAY, updatedAt: now - 12 * DAY,
+      title: { KO: "2027 SEASON'S GREETINGS 예약 판매 안내", EN: "2027 SEASON'S GREETINGS Pre-order Notice", JA: "2027 SEASON'S GREETINGS 予約販売のご案内" },
+      body: { KO: '예약 상품은 출고 예정일부터 순차 발송됩니다.', EN: 'Pre-order items ship in order from the scheduled shipping date.', JA: '予約商品は出荷予定日より順次発送いたします。' } },
+    { id: 'n02', kind: 'NOTICE', published: true, createdAt: now - 5 * DAY, updatedAt: now - 5 * DAY,
+      title: { KO: '연말 배송 지연 안내', EN: 'Year-end Shipping Delay Notice' },
+      body: { KO: '물량 증가로 국내 배송이 1~2일 늦어질 수 있습니다.', EN: 'Domestic delivery may be delayed by 1-2 days due to high volume.' } },
+    { id: 'n03', kind: 'NOTICE', published: false, createdAt: now - 1 * DAY, updatedAt: now - 1 * DAY,
+      title: { KO: 'FANMEETING MD 판매 예고 (초안)', EN: 'FANMEETING MD Coming Soon (draft)' },
+      body: { KO: '판매 일정 확정 후 게시 예정입니다.', EN: 'To be published once the schedule is confirmed.' } },
+    { id: 'n04', kind: 'FAQ', published: true, createdAt: now - 40 * DAY, updatedAt: now - 40 * DAY,
+      title: { KO: '교환은 어떤 경우에 가능한가요?', EN: 'When can I request an exchange?', JA: '交換はどのような場合に可能ですか？' },
+      body: { KO: '상품 불량, 오배송, 구성품 누락의 경우 배송 완료 후 7일 이내 접수할 수 있습니다.', EN: 'Within 7 days of delivery for defective, wrong, or missing items.', JA: '不良・誤配送・付属品欠品の場合、配送完了後7日以内に受付可能です。' } },
+    { id: 'n05', kind: 'FAQ', published: true, createdAt: now - 40 * DAY, updatedAt: now - 9 * DAY,
+      title: { KO: '결제 후 주문을 취소할 수 있나요?', EN: 'Can I cancel after payment?' },
+      body: { KO: '출고 전에는 취소할 수 있으며 결제 금액은 전액 환불됩니다.', EN: 'Orders can be cancelled before shipment for a full refund.' } },
+    { id: 'n06', kind: 'FAQ', published: true, createdAt: now - 40 * DAY, updatedAt: now - 40 * DAY,
+      title: { KO: '1인당 구매 수량 제한이 있나요?', EN: 'Is there a purchase limit per person?', JA: 'お一人様あたりの購入制限はありますか？' },
+      body: { KO: '한정 상품은 계정당 구매 수량이 제한됩니다.', EN: 'Limited items have a per-account purchase limit.', JA: '限定商品はアカウントごとに購入数が制限されます。' } },
+  ]
+
+  const settings = [{ ...DEFAULT_SETTINGS, updatedAt: now - 30 * DAY, updatedBy: 'admin' }]
+
+  return { artists, products, skus, orders, customers, inventoryLogs, ipProjects, plans, saleRounds, inquiries, notices, settings }
 }

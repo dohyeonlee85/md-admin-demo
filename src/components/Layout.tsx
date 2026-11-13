@@ -5,19 +5,19 @@ import { Badge, Button, Modal, cx, useRun } from './ui'
 
 export const MENUS = [
   { path: '/', label: 'Dashboard', ko: '대시보드', ready: true },
-  { path: '/artists', label: 'Artist & IP', ko: '아티스트·IP', ready: false },
-  { path: '/planning', label: 'Product Planning', ko: '상품 기획', ready: false },
+  { path: '/artists', label: 'Artist & IP', ko: '아티스트·IP', ready: true },
+  { path: '/planning', label: 'Product Planning', ko: '상품 기획', ready: true },
   { path: '/products', label: 'Product Management', ko: '상품 관리', ready: true },
-  { path: '/sales', label: 'Sales Management', ko: '판매 관리', ready: false },
+  { path: '/sales', label: 'Sales Management', ko: '판매 관리', ready: true },
   { path: '/orders', label: 'Order & Payment', ko: '주문·결제', ready: true },
   { path: '/inventory', label: 'Inventory & Logistics', ko: '재고·물류', ready: true },
-  { path: '/customers', label: 'Customer & CS', ko: '고객·CS', ready: false },
+  { path: '/customers', label: 'Customer & CS', ko: '고객·CS', ready: true },
   { path: '/analytics', label: 'Analytics', ko: '분석', ready: true },
-  { path: '/settings', label: 'System Settings', ko: '시스템 설정', ready: false },
+  { path: '/settings', label: 'System Settings', ko: '시스템 설정', ready: true },
 ]
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { session, storage, logout, reseed, loading } = useStore()
+  const { session, storage, logout, reseed, loading, error } = useStore()
   const [open, setOpen] = useState(false)
   const [confirmSeed, setConfirmSeed] = useState(false)
   const { run, busy } = useRun()
@@ -79,7 +79,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         )}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {loading ? <p className="py-20 text-center text-ink-sub">자료를 불러오는 중…</p> : children}
+          {error ? (
+            <div className="mx-auto max-w-lg rounded-lg border border-danger/30 bg-danger-soft p-4 text-[13px] leading-relaxed text-danger">{error}</div>
+          ) : loading ? <p className="py-20 text-center text-ink-sub">자료를 불러오는 중…</p> : children}
         </main>
       </div>
 

@@ -1,7 +1,7 @@
 // 매출 집계 규칙
 // - 순매출 = 결제 금액 − 환불 금액 (원화 환산은 결제 시점 환율로 고정)
 // - 결제는 결제일, 환불은 환불일에 반영 / 날짜는 한국 시간(KST) 기준
-import { DAY, isDelayed, isPendingExpired } from './actions'
+import { DAY, isCsDelayed, isDelayed, isPendingExpired } from './actions'
 import { dayKey } from './format'
 import type { Data, Sku } from './types'
 
@@ -55,6 +55,9 @@ export function buildMetrics(d: Data, now = Date.now()) {
     pendingExpired: d.orders.filter((o) => isPendingExpired(o, now)).length,
     delayed: d.orders.filter((o) => isDelayed(o, now)).length,
     lowStock: lowStock.length,
+    csOpen: d.inquiries.filter((q) => q.status === 'OPEN').length,
+    csDelayed: d.inquiries.filter((q) => isCsDelayed(q, now)).length,
+    planReview: d.plans.filter((p) => p.status === 'REVIEW').length,
   }
   const recent = [...d.orders].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8)
   return { series, today, yesterday, net30, orders30, refund30, top10, artistSplit, lowStock, todo, recent }

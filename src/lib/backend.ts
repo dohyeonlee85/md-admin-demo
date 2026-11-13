@@ -13,13 +13,16 @@ export interface Tx {
 }
 export interface Backend {
   kind: 'memory' | 'firestore'
-  subscribe(cb: (d: Data) => void): () => void
+  subscribe(cb: (d: Data) => void, onError?: (e: Error) => void): () => void
   /** 묶음 처리: 안의 변경이 전부 성공하거나 전부 취소된다 */
   runTx(fn: (tx: Tx) => Promise<void>): Promise<void>
   replaceAll(data: Data): Promise<void>
 }
 
-export const emptyData = (): Data => ({ artists: [], products: [], skus: [], orders: [], customers: [], inventoryLogs: [] })
+export const emptyData = (): Data => ({
+  artists: [], products: [], skus: [], orders: [], customers: [], inventoryLogs: [],
+  ipProjects: [], plans: [], saleRounds: [], inquiries: [], notices: [], settings: [],
+})
 
 export class MemoryBackend implements Backend {
   kind = 'memory' as const
@@ -66,7 +69,7 @@ export class FirestoreBackend implements Backend {
   kind = 'firestore' as const
   constructor(private db: Firestore) {}
 
-  subscribe(cb: (d: Data) => void) {
+  subscribe(cb: (d: Data) => void, onError?: (e: Error) => void) {
     const data = emptyData()
     const ready = new Set<ColName>()
     const unsubs = COL_NAMES.map((col) =>
@@ -74,7 +77,7 @@ export class FirestoreBackend implements Backend {
         ;(data as Record<ColName, unknown>)[col] = snap.docs.map((d) => d.data())
         ready.add(col)
         if (ready.size === COL_NAMES.length) cb({ ...data })
-      }),
+      }, (e) => onError?.(e)),
     )
     return () => unsubs.forEach((u) => u())
   }

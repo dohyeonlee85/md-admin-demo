@@ -5,10 +5,18 @@ ATEEZ · xikers 공식 MD SHOP 관리자 시스템의 포트폴리오용 데모�
 
 ## 구현 범위
 
-| 메뉴 | 상태 |
-|---|---|
-| Dashboard, Product Management, Order & Payment, Inventory & Logistics, Analytics | 작동 |
-| Artist & IP, Product Planning, Sales Management, Customer & CS, System Settings | 설계 완료 · 구현 예정 |
+| 메뉴 | 주요 기능 | 상태 |
+|---|---|---|
+| Dashboard | 순매출, 처리 대기 업무, 재고 부족 알림 | 작동 |
+| Artist & IP | IP 프로젝트(앨범 활동·투어 등) 등록, 상품 연결·해제 | 작동 |
+| Product Planning | 기획안 작성 → 승인 요청 → 승인·반려 → 상품으로 전환 | 작동 |
+| Product Management | 상품·SKU 등록, 국가별 가격, 판매 상태 | 작동 |
+| Sales Management | 판매 회차(1차·2차·재판매), 판매 국가, 수동 판매 시작·종료 | 작동 |
+| Order & Payment | 결제 확인, 출고, 취소·환불 기록 | 작동 |
+| Inventory & Logistics | 입고·조정, 재고 이력 | 작동 |
+| Customer & CS | 고객 조회(마스킹), 문의 답변, 교환 승인·반려, 공지·FAQ(KO·EN·JA) | 작동 |
+| Analytics | 기간·아티스트·국가별 실적, ALBUM 발매 후 7일 판매 | 작동 |
+| System Settings | 운영 기준값 변경, 권한표, 외부 연동 현황 | 작동 |
 
 제외: 결제 대행사(PG)·택배사·이메일 연동, 엑셀 업로드.
 
@@ -42,6 +50,12 @@ ATEEZ · xikers 공식 MD SHOP 관리자 시스템의 포트폴리오용 데모�
 - 순매출 = 결제 − 환불. 환불은 환불일에 차감. 원화 환산은 결제 시점 환율 고정. 날짜는 한국 시간.
 - 분석(Analytics): 기간(7·30·90일)·아티스트·국가별 순매출, 주문, 판매 수량, 객단가, 환불률, 분류·국가·상품별 실적. 아티스트 필터는 주문 안의 상품 단위로 분리 계산.
 - ALBUM 지표: 발매일부터 7일간 판매 수량(환불 제외), 버전별 수량. 7일 경과 전에는 '집계 중' 표시.
+- 기획: 승인 대기·승인 상태의 기획안은 수정 불가. 반려는 사유 필수. 승인된 기획안만 상품으로 전환(1회).
+- 판매 회차: 판매 시작은 수동. 선택한 국가의 가격이 모두 있어야 시작 가능. 한 상품에 판매 중 회차는 1개.
+- 교환: 불량·오배송·누락만 접수. 배송 완료 후 7일 이내 접수 건만 승인 가능. 문의는 접수 후 48시간이 지나면 응답 지연.
+- 공지·FAQ: 한국어·영어 필수. 일본어가 없으면 일본 고객에게 영어로 노출.
+- 운영 기준값(재고 부족 100개, 결제 대기 24시간, 배송 지연 5일·14일, 교환 7일, 응답 지연 48시간)은 System Settings 에서 변경하면 판정에 바로 반영.
+- 자동 구매 확정과 기준 환율은 값만 저장하고 자동 실행은 없음(화면에 '표시만'으로 구분).
 
 ## 폴더 구조
 
@@ -52,8 +66,9 @@ src/lib/backend.ts    저장소 2종 (메모리 / Firestore)
 src/lib/actions.ts    업무 규칙
 src/lib/metrics.ts    매출·재고 집계
 src/lib/analytics.ts  분석 화면 집계
+src/lib/settings.ts   운영 기준값 (지연·취소·교환 판정이 읽는 값)
 src/lib/store.tsx     로그인 상태와 자료 연결
-src/pages/            화면 (Dashboard, Products, Orders, Inventory, Analytics)
+src/pages/            화면 10개 (Dashboard, Artists, Planning, Products, Sales, Orders, Inventory, Customers, Analytics, Settings)
 firestore.rules       DB 보안 규칙
 public/_redirects     새로고침 시 화면 주소 유지 (Cloudflare용)
 ```
@@ -170,16 +185,17 @@ git push
 - `git status` 로 올라갈 파일 목록을 미리 확인할 수 있습니다. 목록에 `.env` 가 보이면 멈추고 `.gitignore` 를 확인합니다.
 - 업로드 확인: github.com/dohyeonlee85/md-admin-demo 에 `src` 폴더와 `package.json` 이 보이면 성공.
 
-## 4. Cloudflare 배포 (검증 전)
+## 4. Cloudflare 배포
 
-> 아래 절차는 아직 실제 배포로 확인하지 않았습니다. 화면 이름은 Cloudflare 업데이트에 따라 다를 수 있습니다.
+> 2026-11-13 실제 배포로 확인한 절차입니다. 배포 주소: `https://md-admin-demo.pages.dev`
 
-1. Cloudflare 대시보드 → **Workers & Pages → Create → Pages → Connect to Git** → GitHub 연결 → `md-admin-demo` 선택.
+1. Cloudflare 대시보드 → **Workers & Pages → Create** → 화면 아래 **Continue to Pages** 링크 → **Import an existing Git repository** → `md-admin-demo` 선택.
+   - 첫 화면의 "Continue with GitHub"는 Workers용이라 사용하지 않습니다.
 2. 빌드 설정
 
 | 항목 | 값 |
 |---|---|
-| Framework preset | `Vite` (없으면 None) |
+| Framework preset | `React (Vite)` 또는 None (**VitePress 아님**) |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Root directory | 비워 둠 (`package.json` 이 저장소 맨 위에 있을 때) |
@@ -198,6 +214,8 @@ git push
 | `npm : 이 시스템에서 스크립트를 실행할 수 없으므로…` | 1-1 실행 정책 변경 |
 | `npm install` 시 `package.json` 없음 오류 | `cd` 경로가 틀림. `package.json` 이 있는 폴더로 이동 |
 | `.env` 를 만들었는데 로컬 데모 모드 그대로 | 파일 이름이 `.env.txt` 로 저장됨 → 파일 탐색기 "보기 → 파일 확장명" 켜고 이름 확인. 또는 서버 재시작 안 함 |
+| 로그인 후 "자료를 불러오는 중…"에서 멈춤 또는 빨간 안내문 | Firestore 데이터베이스가 없거나 규칙을 게시하지 않음 → 2-1, 2-5 확인 |
+| 새 메뉴(기획·판매·CS 등)가 비어 있음 | 예전 시연 자료에는 새 메뉴 자료가 없음 → 관리자 로그인 후 **시연 자료 초기화** |
 | 로그인 후 "권한 없음" | 규칙의 관리자 이메일과 `VITE_ADMIN_EMAIL` 오타 · 대소문자 확인, 규칙 **게시** 여부 확인 |
 | 체험하기 클릭 시 로그인 실패 | 체험 계정 이메일·비밀번호 오타, Authentication 사용자 목록에 있는지 확인 |
 | 배포 주소에서 로그인 실패 (검증 전) | Authentication → 설정 → **승인된 도메인**에 `○○○.pages.dev` 추가 |

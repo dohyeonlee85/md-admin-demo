@@ -7,11 +7,12 @@ import { dateTime, maskDetail, maskName, maskPhone, money } from '../lib/format'
 import { COUNTRY_LABEL, CURRENCIES, ORDER_STATUS_LABEL, type Order } from '../lib/types'
 import { Badge, Button, Card, DataTable, Drawer, Field, Modal, PageHeader, cx, useRun } from '../components/ui'
 import { OrderBadge, PayBadge } from '../components/status'
+import { rules } from '../lib/settings'
 
 const QUICK = [
   { key: '', label: '전체' },
   { key: 'toShip', label: '출고 대기' },
-  { key: 'expired', label: '결제 대기 24시간 경과' },
+  { key: 'expired', label: '결제 대기 기한 경과' },
   { key: 'delayed', label: '배송 지연' },
   { key: 'refunded', label: '환불' },
 ]
@@ -150,8 +151,8 @@ export default function Orders() {
             {['SHIPPED', 'DELIVERED', 'CONFIRMED'].includes(order.orderStatus) && order.paymentStatus === 'PAID' && <Button variant="danger" onClick={() => setDialog('refund')}>환불 기록</Button>}
           </>}>
           <div className="space-y-5">
-            {isPendingExpired(order) && <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">결제 대기 24시간이 지났습니다. 자동 취소 대상입니다.</p>}
-            {isDelayed(order) && <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">배송 지연 기준(국내 5일 · 해외 14일)을 넘었습니다.</p>}
+            {isPendingExpired(order) && <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">결제 대기 {rules.pendingCancelHours}시간이 지났습니다. 자동 취소 대상입니다.</p>}
+            {isDelayed(order) && <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">배송 지연 기준(국내 {rules.delayDomesticDays}일 · 해외 {rules.delayOverseasDays}일)을 넘었습니다.</p>}
 
             <section>
               <p className="label">주문 상품 (주문 당시 상품명·가격 보존)</p>

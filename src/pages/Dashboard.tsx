@@ -6,6 +6,7 @@ import { available, buildMetrics } from '../lib/metrics'
 import { dateTime, krwShort, maskName, money, num } from '../lib/format'
 import { Badge, Card, PageHeader, cx } from '../components/ui'
 import { OrderBadge } from '../components/status'
+import { rules } from '../lib/settings'
 
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'up' | 'down' }) {
   return (
@@ -32,9 +33,11 @@ export default function Dashboard() {
   }
   const todos = [
     { label: '출고 대기', n: m.todo.toShip, to: '/orders?f=toShip', tone: 'primary' as const },
-    { label: '결제 대기 24시간 경과', n: m.todo.pendingExpired, to: '/orders?f=expired', tone: 'warning' as const },
+    { label: `결제 대기 ${rules.pendingCancelHours}시간 경과`, n: m.todo.pendingExpired, to: '/orders?f=expired', tone: 'warning' as const },
     { label: '배송 지연', n: m.todo.delayed, to: '/orders?f=delayed', tone: 'danger' as const },
     { label: '재고 부족 SKU', n: m.todo.lowStock, to: '/inventory?f=low', tone: 'warning' as const },
+    { label: '미처리 문의·교환', n: m.todo.csOpen, to: '/customers?tab=cs', tone: m.todo.csDelayed ? 'danger' as const : 'primary' as const },
+    { label: '기획 승인 대기', n: m.todo.planReview, to: '/planning', tone: 'primary' as const },
   ]
 
   return (
@@ -45,7 +48,7 @@ export default function Dashboard() {
           sub={pct === null ? '어제 매출 없음' : `어제 대비 ${diff >= 0 ? '+' : ''}${pct}%`} tone={diff >= 0 ? 'up' : 'down'} />
         <Kpi label="최근 30일 순매출" value={krwShort(m.net30)} sub={`환불 ${krwShort(m.refund30)} 차감`} />
         <Kpi label="오늘 결제 주문" value={num(m.today.orders) + '건'} sub={`30일 ${num(m.orders30)}건`} />
-        <Kpi label="재고 부족 SKU" value={num(m.todo.lowStock) + '개'} sub="가용 재고 100개 미만" />
+        <Kpi label="재고 부족 SKU" value={num(m.todo.lowStock) + '개'} sub="가용 재고가 부족 기준 미만" />
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-3">

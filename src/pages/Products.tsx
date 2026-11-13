@@ -5,13 +5,13 @@ import { missingPrices } from '../lib/actions'
 import { available } from '../lib/metrics'
 import { money, num } from '../lib/format'
 import {
-  CATEGORIES, COUNTRY_LABEL, CURRENCIES, PRODUCT_STATUS_LABEL, SALE_TYPE_LABEL,
+  CATEGORIES, COUNTRY_LABEL, CURRENCIES, PRODUCT_STATUS_LABEL, ROUNDS, SALE_TYPE_LABEL,
   type Category, type Product, type ProductStatus, type SaleType, type Sku,
 } from '../lib/types'
 import { Button, Card, DataTable, Drawer, Field, PageHeader, useRun } from '../components/ui'
 import { ProductBadge, StockBadge } from '../components/status'
+import { rules } from '../lib/settings'
 
-const ROUNDS = ['1차', '2차', '재판매']
 
 function blank(artistId: string): Product {
   return {
@@ -69,10 +69,10 @@ export default function Products() {
     const newSkus: Sku[] = isNew
       ? options.split(',').map((o) => o.trim()).filter(Boolean).map((option, i) => ({
           id: `${draft.id}-s${i + 1}`, productId: draft.id, code: `SKU-${draft.id.toUpperCase()}-${i + 1}`,
-          option, onHand: 0, allocated: 0, threshold: 100,
+          option, onHand: 0, allocated: 0, threshold: rules.lowStockThreshold,
         }))
       : []
-    if (isNew && newSkus.length === 0) newSkus.push({ id: `${draft.id}-s1`, productId: draft.id, code: `SKU-${draft.id.toUpperCase()}-1`, option: '단품', onHand: 0, allocated: 0, threshold: 100 })
+    if (isNew && newSkus.length === 0) newSkus.push({ id: `${draft.id}-s1`, productId: draft.id, code: `SKU-${draft.id.toUpperCase()}-1`, option: '단품', onHand: 0, allocated: 0, threshold: rules.lowStockThreshold })
     const clean = { ...draft }
     if (!clean.shipFrom) delete clean.shipFrom
     if (await run(() => actions.saveProduct(clean, newSkus), isNew ? '상품을 등록했습니다.' : '상품 정보를 저장했습니다.')) setIsNew(false)

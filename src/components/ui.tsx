@@ -221,4 +221,40 @@ export function PageHeader({ title, desc, action }: { title: string; desc?: stri
   )
 }
 
+
+// ── 탭 · 요약 칸 (추가 메뉴 공통)
+export function Tabs<T extends string>({ value, onChange, items, label }: {
+  value: T; onChange: (v: T) => void; items: { v: T; t: string; n?: number }[]; label: string
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-line px-2">
+      {items.map((it) => (
+        <button key={it.v} type="button" role="tab" aria-selected={value === it.v} onClick={() => onChange(it.v)}
+          className={cx('-mb-px h-10 shrink-0 whitespace-nowrap border-b-2 px-3 text-[13px] font-medium',
+            value === it.v ? 'border-primary text-primary-dark' : 'border-transparent text-ink-sub hover:text-ink')}>
+          {it.t}{it.n !== undefined && <span className="num ml-1.5 text-xs text-ink-mute">{it.n}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+export function Stat({ label, value, sub, className }: { label: string; value: ReactNode; sub?: string; className?: string }) {
+  return (
+    <div className={cx('rounded-lg border border-line bg-white p-4', className)}>
+      <p className="text-xs text-ink-sub">{label}</p>
+      <p className="num mt-1.5 text-[22px] font-semibold leading-none tracking-tight">{value}</p>
+      {sub && <p className="mt-2 text-xs text-ink-mute">{sub}</p>}
+    </div>
+  )
+}
+/** 읽기 전용 정보 줄 */
+export function Row({ k, children }: { k: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 border-b border-line py-2 text-[13px] last:border-0">
+      <span className="w-24 shrink-0 text-ink-sub">{k}</span>
+      <span className="min-w-0 flex-1 break-words">{children}</span>
+    </div>
+  )
+}
+
 export { cx }

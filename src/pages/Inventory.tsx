@@ -7,6 +7,7 @@ import { dateTime, num } from '../lib/format'
 import { LOG_TYPE_LABEL, type InventoryLog, type Sku } from '../lib/types'
 import { Badge, Button, Card, DataTable, Field, Modal, PageHeader, cx, useRun } from '../components/ui'
 import { StockBadge } from '../components/status'
+import { rules } from '../lib/settings'
 
 const signed = (n: number) => (n > 0 ? '+' : '') + num(n)
 
@@ -68,7 +69,7 @@ export default function Inventory() {
 
   return (
     <>
-      <PageHeader title="Inventory & Logistics" desc="가용 재고 = 보유 − 할당. 가용 재고가 부족 기준(기본 100개)보다 적으면 '부족'으로 표시합니다." />
+      <PageHeader title="Inventory & Logistics" desc={`가용 재고 = 보유 − 할당. 가용 재고가 부족 기준(기본 ${rules.lowStockThreshold}개)보다 적으면 '부족'으로 표시합니다.`} />
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <div className="flex rounded-md border border-line p-0.5" role="tablist">

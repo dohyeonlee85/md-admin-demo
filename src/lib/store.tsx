@@ -4,6 +4,7 @@ import { ADMIN_EMAIL, DEMO_EMAIL, DEMO_PASSWORD, auth, db, firebaseEnabled } fro
 import { FirestoreBackend, MemoryBackend, emptyData, loadAll, type Backend } from './backend'
 import { createActions, type Actions } from './actions'
 import { generateSeed } from './seed'
+import { applySettings } from './settings'
 import type { Data } from './types'
 
 /** admin: DB에 실제 저장 / demo: 체험 모드(저장 안 됨, 개인정보 마스킹) */
@@ -14,6 +15,7 @@ interface Ctx {
   session: Session | null
   booting: boolean
   loading: boolean
+  error: string
   data: Data
   actions: Actions
   storage: 'firestore' | 'memory'
@@ -29,6 +31,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [booting, setBooting] = useState(firebaseEnabled)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [data, setData] = useState<Data>(emptyData)
   const [backend, setBackend] = useState<Backend>(() => new MemoryBackend(emptyData()))
   const unsub = useRef<() => void>()
@@ -37,7 +40,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     unsub.current?.()
     setBackend(b)
     setSession(s)
-    unsub.current = b.subscribe((d) => { setData(d); setLoading(false) })
+    setError('')
+    unsub.current = b.subscribe(
+      (d) => { applySettings(d.settings[0]); setData(d); setLoading(false) },
+      (e) => { setError(explain(e)); setLoading(false) },
+    )
   }, [])
 
   // Firebase 로그인 상태가 바뀔 때마다 역할에 맞는 저장소를 연결
@@ -53,15 +60,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         if (role === 'admin') attach(new FirestoreBackend(db!), { email: user.email, role })
         else {
-          const loaded = await loadAll(db!)
-          attach(new MemoryBackend(loaded.products.length ? loaded : generateSeed()), { email: user.email, role })
+          // DB를 읽지 못해도 체험은 가능하도록 시연 자료로 대체
+          const loaded = await loadAll(db!).catch(() => emptyData())
+          attach(new MemoryBackend(loaded.products.length ? fillMissing(loaded) : generateSeed()), { email: user.email, role })
         }
       } finally { setBooting(false) }
     })
   }, [attach])
 
   const value = useMemo<Ctx>(() => ({
-    session, booting, loading, data, firebaseEnabled,
+    session, booting, loading, error, data, firebaseEnabled,
     storage: backend.kind,
     actions: createActions(backend, session?.email ?? 'demo'),
     async login(email, password) {
@@ -77,9 +85,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       else { unsub.current?.(); setSession(null) }
     },
     async reseed() { await backend.replaceAll(generateSeed()) },
-  }), [session, booting, loading, data, backend, attach])
+  }), [session, booting, loading, error, data, backend, attach])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+}
+
+/** 예전에 넣은 시연 자료에는 없는 메뉴(기획·회차·CS 등) 자료를 체험 모드에서만 채워 준다 */
+function fillMissing(d: Data): Data {
+  if (d.settings.length) return d
+  const seed = generateSeed()
+  const next = { ...d }
+  for (const k of ['ipProjects', 'plans', 'saleRounds', 'inquiries', 'notices', 'settings'] as const)
+    if (!d[k].length) (next as Record<string, unknown>)[k] = seed[k]
+  return next
+}
+
+/** DB 읽기 실패 원인을 쉬운 말로 */
+function explain(e: Error & { code?: string }) {
+  if (e.code === 'permission-denied')
+    return 'DB 읽기 권한이 없습니다. Firestore 규칙의 관리자 이메일과 VITE_ADMIN_EMAIL 이 같은지, 규칙을 게시했는지 확인하세요.'
+  if (e.code === 'not-found' || e.code === 'failed-precondition')
+    return 'Firestore 데이터베이스를 찾을 수 없습니다. Firebase 콘솔에서 데이터베이스가 만들어졌는지 확인하세요.'
+  return `자료를 불러오지 못했습니다. (${e.code ?? e.message})`
 }
 
 export function useStore() {

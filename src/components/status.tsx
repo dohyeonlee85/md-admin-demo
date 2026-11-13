@@ -4,6 +4,10 @@ import {
   type OrderStatus, type PaymentStatus, type ProductStatus, type Sku,
 } from '../lib/types'
 import { available } from '../lib/metrics'
+import {
+  INQUIRY_STATUS_LABEL, IP_STATUS_LABEL, PLAN_STATUS_LABEL, ROUND_STATUS_LABEL,
+  type InquiryStatus, type IpStatus, type PlanStatus, type RoundStatus,
+} from '../lib/types'
 
 const ORDER_TONE: Record<OrderStatus, Tone> = {
   PENDING: 'warning', PAID: 'primary', PREPARING: 'primary', SHIPPED: 'primary',
@@ -23,3 +27,17 @@ export function StockBadge({ sku }: { sku: Sku }) {
   if (a < sku.threshold) return <Badge tone="warning">부족</Badge>
   return <Badge tone="success">정상</Badge>
 }
+
+// ── 추가 메뉴용 상태 뱃지
+
+const IP_TONE: Record<IpStatus, Tone> = { PLANNED: 'warning', ACTIVE: 'success', CLOSED: 'gray' }
+export const IpBadge = ({ s }: { s: IpStatus }) => <Badge tone={IP_TONE[s]}>{IP_STATUS_LABEL[s]}</Badge>
+
+const PLAN_TONE: Record<PlanStatus, Tone> = { DRAFT: 'gray', REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger' }
+export const PlanBadge = ({ s }: { s: PlanStatus }) => <Badge tone={PLAN_TONE[s]}>{PLAN_STATUS_LABEL[s]}</Badge>
+
+const ROUND_TONE: Record<RoundStatus, Tone> = { SCHEDULED: 'warning', OPEN: 'success', CLOSED: 'gray' }
+export const RoundBadge = ({ s }: { s: RoundStatus }) => <Badge tone={ROUND_TONE[s]}>{ROUND_STATUS_LABEL[s]}</Badge>
+
+const INQ_TONE: Record<InquiryStatus, Tone> = { OPEN: 'warning', ANSWERED: 'success', APPROVED: 'success', REJECTED: 'gray' }
+export const InquiryBadge = ({ s }: { s: InquiryStatus }) => <Badge tone={INQ_TONE[s]}>{INQUIRY_STATUS_LABEL[s]}</Badge>
