@@ -51,7 +51,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           ))}
         </ul>
         <p className="border-t border-white/10 px-5 py-3 text-[11px] leading-relaxed text-white/45">
-          포트폴리오용 데모입니다.<br />모든 자료는 테스트 데이터입니다.
+          포트폴리오용 데모입니다.<br />모든 자료는 테스트 데이터입니다.<br />
+          <span className="text-white/30">빌드 {__BUILD_ID__}</span>
         </p>
       </nav>
 

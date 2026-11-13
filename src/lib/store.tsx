@@ -77,8 +77,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password)
     },
     async loginDemo() {
-      if (auth && DEMO_EMAIL) await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD)
-      else attach(new MemoryBackend(generateSeed()), { email: 'demo@local', role: 'demo' })
+      // 체험 계정 로그인이 실패해도(계정 미생성·비밀번호 불일치) 시연 자료로 체험은 가능하게
+      if (auth && DEMO_EMAIL && DEMO_EMAIL.toLowerCase() !== ADMIN_EMAIL) {
+        try { await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD); return }
+        catch (e) { console.warn('[demo] 체험 계정 로그인 실패, 로컬 시연 자료로 전환', (e as { code?: string }).code) }
+      }
+      attach(new MemoryBackend(generateSeed()), { email: 'demo@local', role: 'demo' })
     },
     async logout() {
       if (auth?.currentUser) await signOut(auth)
